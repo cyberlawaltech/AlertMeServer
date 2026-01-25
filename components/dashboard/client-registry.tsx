@@ -38,18 +38,7 @@ interface Client {
   lng: number
 }
 
-const mockClients: Client[] = [
-  { id: '1', name: 'Adebayo Oluwaseun', deviceId: 'ECO-7842', lat: 6.5244, lng: 3.3792, balance: 245000, status: 'active', lastSync: '2 min ago', location: 'Lagos, Nigeria' },
-  { id: '2', name: 'Chioma Nnamdi', deviceId: 'ECO-3156', lat: 9.0579, lng: 7.4951, balance: 89500, status: 'active', lastSync: '5 min ago', location: 'Abuja, Nigeria' },
-  { id: '3', name: 'Emmanuel Okonkwo', deviceId: 'ECO-9421', lat: 5.9631, lng: -0.1869, balance: 156000, status: 'idle', lastSync: '15 min ago', location: 'Accra, Ghana' },
-  { id: '4', name: 'Fatima Diallo', deviceId: 'ECO-2847', lat: 14.6928, lng: -17.4467, balance: 312000, status: 'active', lastSync: '1 min ago', location: 'Dakar, Senegal' },
-  { id: '5', name: 'Kwame Asante', deviceId: 'ECO-6539', lat: 6.1286, lng: 1.2254, balance: 78200, status: 'offline', lastSync: '2 hours ago', location: 'Lomé, Togo' },
-  { id: '6', name: 'Amina Bello', deviceId: 'ECO-4721', lat: 12.0022, lng: 8.5919, balance: 423000, status: 'active', lastSync: '30 sec ago', location: 'Kano, Nigeria' },
-  { id: '7', name: 'Kofi Mensah', deviceId: 'ECO-8934', lat: 5.5560, lng: -0.1969, balance: 67800, status: 'active', lastSync: '3 min ago', location: 'Tema, Ghana' },
-  { id: '8', name: 'Blessing Eze', deviceId: 'ECO-1256', lat: 4.7500, lng: 7.0000, balance: 198500, status: 'idle', lastSync: '20 min ago', location: 'Port Harcourt, Nigeria' },
-  { id: '9', name: 'Yusuf Ibrahim', deviceId: 'ECO-5623', lat: 11.9964, lng: 8.5167, balance: 534000, status: 'active', lastSync: '45 sec ago', location: 'Kano, Nigeria' },
-  { id: '10', name: 'Grace Afolabi', deviceId: 'ECO-7189', lat: 7.3775, lng: 3.9470, balance: 112000, status: 'active', lastSync: '4 min ago', location: 'Ibadan, Nigeria' },
-]
+const mockClients: Client[] = []
 
 export function ClientRegistry() {
   const [searchQuery, setSearchQuery] = useState('')

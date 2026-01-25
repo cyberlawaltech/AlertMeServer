@@ -6,18 +6,25 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { MapPin, Wifi, User, Clock, X } from 'lucide-react'
 import { RemoteControlDrawer } from './remote-control-drawer'
 import { useIsMobile } from '@/hooks/use-media-query'
-import L from 'leaflet'
 
-// Fix Leaflet default marker icon issue
-const DefaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-})
+// Leaflet icon setup - will be initialized in useEffect
+let DefaultIcon: any = null
+
+const initializeLeafletIcon = () => {
+  if (typeof window !== 'undefined' && !DefaultIcon) {
+    const L = require('leaflet')
+    DefaultIcon = L.icon({
+      iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+      iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+      shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+      iconSize: [25, 41],
+      iconAnchor: [12, 41],
+      popupAnchor: [1, -34],
+      shadowSize: [41, 41],
+    })
+  }
+  return DefaultIcon
+}
 
 // Dynamic import for Leaflet (SSR-incompatible)
 const MapContainer = dynamic(
@@ -49,16 +56,7 @@ interface ClientLocation {
   location: string
 }
 
-const mockClients: ClientLocation[] = [
-  { id: '1', name: 'Adebayo Oluwaseun', deviceId: 'ECO-7842', lat: 6.5244, lng: 3.3792, balance: 245000, status: 'active', lastSync: '2 min ago', location: 'Lagos, Nigeria' },
-  { id: '2', name: 'Chioma Nnamdi', deviceId: 'ECO-3156', lat: 9.0579, lng: 7.4951, balance: 89500, status: 'active', lastSync: '5 min ago', location: 'Abuja, Nigeria' },
-  { id: '3', name: 'Emmanuel Okonkwo', deviceId: 'ECO-9421', lat: 5.9631, lng: -0.1869, balance: 156000, status: 'idle', lastSync: '15 min ago', location: 'Accra, Ghana' },
-  { id: '4', name: 'Fatima Diallo', deviceId: 'ECO-2847', lat: 14.6928, lng: -17.4467, balance: 312000, status: 'active', lastSync: '1 min ago', location: 'Dakar, Senegal' },
-  { id: '5', name: 'Kwame Asante', deviceId: 'ECO-6539', lat: 6.1286, lng: 1.2254, balance: 78200, status: 'offline', lastSync: '2 hours ago', location: 'Lomé, Togo' },
-  { id: '6', name: 'Amina Bello', deviceId: 'ECO-4721', lat: 12.0022, lng: 8.5919, balance: 423000, status: 'active', lastSync: '30 sec ago', location: 'Kano, Nigeria' },
-  { id: '7', name: 'Kofi Mensah', deviceId: 'ECO-8934', lat: 5.5560, lng: -0.1969, balance: 67800, status: 'active', lastSync: '3 min ago', location: 'Tema, Ghana' },
-  { id: '8', name: 'Blessing Eze', deviceId: 'ECO-1256', lat: 4.7500, lng: 7.0000, balance: 198500, status: 'idle', lastSync: '20 min ago', location: 'Port Harcourt, Nigeria' },
-]
+const mockClients: ClientLocation[] = []
 
 export function ClientMap() {
   const [selectedClient, setSelectedClient] = useState<ClientLocation | null>(null)
@@ -69,6 +67,7 @@ export function ClientMap() {
 
   useEffect(() => {
     setIsClient(true)
+    initializeLeafletIcon()
   }, [])
 
   const handleMarkerClick = (client: ClientLocation) => {

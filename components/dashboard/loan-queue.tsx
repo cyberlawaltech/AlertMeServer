@@ -34,60 +34,7 @@ interface LoanRequest {
   monthlyIncome: number
 }
 
-const mockLoanRequests: LoanRequest[] = [
-  {
-    id: '1',
-    loanId: 'LN-78421',
-    userName: 'Adebayo Oluwaseun',
-    userId: 'USR-7842',
-    requestedAmount: 500000,
-    purpose: 'Business Expansion',
-    riskScore: 'low',
-    businessLogic: 'Customer has excellent credit history (720). Monthly income 3.2x requested amount. DTI ratio within acceptable range.',
-    timestamp: '2 min ago',
-    creditScore: 720,
-    monthlyIncome: 850000,
-  },
-  {
-    id: '2',
-    loanId: 'LN-31567',
-    userName: 'Chioma Nnamdi',
-    userId: 'USR-3156',
-    requestedAmount: 150000,
-    purpose: 'Emergency Medical',
-    riskScore: 'medium',
-    businessLogic: 'First-time loan applicant. Income verification pending. Emergency flag triggers expedited review.',
-    timestamp: '8 min ago',
-    creditScore: 640,
-    monthlyIncome: 320000,
-  },
-  {
-    id: '3',
-    loanId: 'LN-94218',
-    userName: 'Emmanuel Okonkwo',
-    userId: 'USR-9421',
-    requestedAmount: 2500000,
-    purpose: 'Agricultural Investment',
-    riskScore: 'low',
-    businessLogic: 'Repeat borrower (5 loans, 100% repayment). Collateral valued at 1.5x loan amount. Government subsidy eligible.',
-    timestamp: '15 min ago',
-    creditScore: 780,
-    monthlyIncome: 1200000,
-  },
-  {
-    id: '4',
-    loanId: 'LN-28473',
-    userName: 'Fatima Diallo',
-    userId: 'USR-2847',
-    requestedAmount: 75000,
-    purpose: 'Education Fees',
-    riskScore: 'high',
-    businessLogic: 'Recent employment change. Previous loan delinquency (30 days). Requires manual review.',
-    timestamp: '22 min ago',
-    creditScore: 520,
-    monthlyIncome: 180000,
-  },
-]
+const mockLoanRequests: LoanRequest[] = []
 
 export function LoanQueue() {
   const [requests, setRequests] = useState(mockLoanRequests)

@@ -1,24 +1,19 @@
 const express = require('express');
 const http = require('http');
-const { Server } = require('socket.io');
+const WebSocket = require('ws');
 const cors = require('cors');
+const { v4: uuidv4 } = require('uuid');
 
 const app = express();
-const server = http.createServer(app);
-const io = new Server(server, {
-  cors: {
-    origin: process.env.ALLOWED_ORIGINS || '*',
-    methods: ['GET', 'POST']
-  }
-});
-
-// Middleware
-app.use(express.json());
 app.use(cors());
+app.use(express.json());
 
-// In-memory database simulation
-const clients = {};
-const adminSessions = new Set();
+const server = http.createServer(app);
+const wss = new WebSocket.Server({ server });
+
+// This "clients" object stores the current state and connection of every PWA
+// Key: clientId, Value: { socket, state, lastSeen }
+const clients = new Map();
 
 // Routes
 app.get('/health', (req, res) => {
@@ -26,100 +21,155 @@ app.get('/health', (req, res) => {
 });
 
 app.get('/api/clients', (req, res) => {
-  const clientsList = Object.keys(clients).map(clientId => ({
-    clientId,
-    ...clients[clientId]
-  }));
-  res.json(clientsList);
+  const clientList = [];
+  clients.forEach((value, key) => {
+    clientList.push({
+      clientId: key,
+      state: value.state,
+      online: value.socket !== null && value.socket.readyState === WebSocket.OPEN,
+      lastSeen: value.lastSeen
+    });
+  });
+  res.json(clientList);
 });
 
 app.get('/api/clients/:clientId', (req, res) => {
   const { clientId } = req.params;
-  if (clients[clientId]) {
-    res.json({ clientId, ...clients[clientId] });
+  const clientRecord = clients.get(clientId);
+  if (clientRecord) {
+    res.json({
+      clientId,
+      state: clientRecord.state,
+      online: clientRecord.socket !== null && clientRecord.socket.readyState === WebSocket.OPEN,
+      lastSeen: clientRecord.lastSeen
+    });
   } else {
     res.status(404).json({ error: 'Client not found' });
   }
 });
 
-// Socket.IO Connection Handler
-io.on('connection', (socket) => {
-  const clientId = socket.handshake.query.clientId || socket.id;
-  const isAdmin = socket.handshake.query.isAdmin === 'true';
+// --- WEBSOCKET LOGIC (Client Communication) ---
+wss.on('connection', (ws, req) => {
+  const url = new URL(req.url, `http://${req.headers.host}`);
+  const clientId = url.searchParams.get('clientId');
 
-  console.log(`[CONNECTION] ${isAdmin ? 'Admin' : 'Client'} connected: ${clientId}`);
-
-  if (isAdmin) {
-    adminSessions.add(socket.id);
-    socket.join('admin_room');
-    console.log(`[ADMIN] Admin session created: ${socket.id}`);
-  } else {
-    // Initialize client if not exists
-    if (!clients[clientId]) {
-      clients[clientId] = {
-        socketId: socket.id,
-        status: 'Connected',
-        deviceInfo: null,
-        messages: [],
-        lastActivity: new Date().toISOString(),
-        createdAt: new Date().toISOString()
-      };
-    } else {
-      clients[clientId].socketId = socket.id;
-      clients[clientId].status = 'Connected';
-      clients[clientId].lastActivity = new Date().toISOString();
-    }
-
-    socket.join(`client_${clientId}`);
+  if (!clientId) {
+    ws.terminate();
+    return;
   }
 
-  // ============================================
-  // STEALTH CHECK-IN HANDLER
-  // ============================================
-  socket.on('CLIENT_CHECK_IN', (data) => {
-    console.log(`[CHECK-IN] Device: ${clientId}`);
-    console.log(`  - Device Info:`, data);
+  console.log(`Client Connected: ${clientId}`);
+  
+  // Register or update client
+  clients.set(clientId, {
+    socket: ws,
+    state: {},
+    lastSeen: new Date()
+  });
 
-    if (clients[clientId]) {
-      clients[clientId].status = 'Online';
-      clients[clientId].deviceInfo = data;
-      clients[clientId].lastActivity = new Date().toISOString();
+  ws.on('message', (message) => {
+    try {
+      const { event, data } = JSON.parse(message);
+      const clientRecord = clients.get(clientId);
 
-      // Tell the client to stop checking in
-      socket.emit('command', {
-        action: 'CHECK_IN_ACK',
-        payload: {
-          message: 'Check-in acknowledged',
-          timestamp: new Date().toISOString()
-        }
-      });
+      if (event === 'STATE_UPDATED') {
+        console.log(`Update from ${clientId}`);
+        clientRecord.state = data;
+        clientRecord.lastSeen = new Date();
+      }
 
-      // Notify Admins a device just surfaced
-      io.to('admin_room').emit('DEVICE_CHECKIN_NOTIFICATION', {
-        clientId,
-        status: clients[clientId].status,
-        deviceInfo: clients[clientId].deviceInfo,
-        timestamp: new Date().toISOString()
-      });
-
-      console.log(`[CHECK-IN] Sent CHECK_IN_ACK to ${clientId}`);
+      if (event === 'HEARTBEAT') {
+        clientRecord.lastSeen = new Date();
+      }
+    } catch (err) {
+      console.error('Error parsing client message', err);
     }
   });
 
-  // ============================================
-  // BI-DIRECTIONAL MESSAGING
-  // ============================================
-  socket.on('MESSAGE_TO_SERVER', (payload) => {
-    console.log(`[MESSAGE] From ${clientId}: ${payload.text}`);
+  ws.on('close', () => {
+    console.log(`Client Disconnected: ${clientId}`);
+    // Keep the state in memory, just remove the socket
+    const record = clients.get(clientId);
+    if (record) record.socket = null;
+  });
+});
 
-    // Store message in client record
-    if (clients[clientId]) {
-      clients[clientId].messages.push({
-        sender: 'client',
-        text: payload.text,
-        timestamp: new Date().toISOString()
-      });
+// --- API ROUTES (Dashboard Communication) ---
+
+// 1. Send a command to a specific client
+app.post('/api/command', (req, res) => {
+  const { clientId, action, payload } = req.body;
+  const clientRecord = clients.get(clientId);
+
+  if (!clientRecord || !clientRecord.socket) {
+    return res.status(404).json({ error: 'Client not online or not found' });
+  }
+
+  // Send the JSON packet to the PWA
+  clientRecord.socket.send(JSON.stringify({ action, payload }));
+  console.log(`Sent ${action} to ${clientId}`);
+  
+  res.json({ success: true, message: `Command ${action} dispatched.` });
+});
+
+// --- REMOTE CONTROL API ENDPOINTS ---
+// 2. Invoke a function on a client
+app.post('/api/control/invoke', (req, res) => {
+  const { clientId, method, args } = req.body;
+  const clientRecord = clients.get(clientId);
+  
+  if (clientRecord && clientRecord.socket && clientRecord.socket.readyState === WebSocket.OPEN) {
+    clientRecord.socket.send(JSON.stringify({ 
+      action: 'INVOKE_FUNCTION', 
+      payload: { method, args } 
+    }));
+    return res.json({ success: true, message: `Invoking ${method} on ${clientId}` });
+  }
+  res.status(404).json({ error: 'Client offline or not found' });
+});
+
+// 3. Change Gateway remotely
+app.post('/api/control/gateway', (req, res) => {
+  const { gatewayId, targetClientId } = req.body;
+  
+  const command = { action: 'SWITCH_GATEWAY', payload: { gatewayId } };
+  
+  if (targetClientId) {
+    const clientRecord = clients.get(targetClientId);
+    if (clientRecord && clientRecord.socket && clientRecord.socket.readyState === WebSocket.OPEN) {
+      clientRecord.socket.send(JSON.stringify(command));
+      return res.json({ success: true, message: `Switched gateway to ${gatewayId} for ${targetClientId}` });
     }
+    return res.status(404).json({ error: 'Target client not found' });
+  } else {
+    // Broadcast to all connected clients
+    clients.forEach((clientRecord) => {
+      if (clientRecord.socket && clientRecord.socket.readyState === WebSocket.OPEN) {
+        clientRecord.socket.send(JSON.stringify(command));
+      }
+    });
+    res.json({ success: true, message: `Switched gateway to ${gatewayId} globally` });
+  }
+});
+
+// 4. Process Loan Decision
+app.post('/api/control/loan', (req, res) => {
+  const { clientId, loanId, status } = req.body;
+  const clientRecord = clients.get(clientId);
+  
+  if (clientRecord && clientRecord.socket && clientRecord.socket.readyState === WebSocket.OPEN) {
+    clientRecord.socket.send(JSON.stringify({ 
+      action: 'LOAN_DECISION', 
+      payload: { loanId, status } 
+    }));
+    res.json({ success: true, message: `Loan decision sent to ${clientId}` });
+  } else {
+    res.status(404).json({ error: 'Client not found' });
+  }
+});
+
+
+
 
     // Send to Admin Dashboard
     io.to('admin_room').emit('CLIENT_MESSAGE', {
@@ -234,7 +284,7 @@ io.on('connection', (socket) => {
 // Graceful shutdown
 process.on('SIGINT', () => {
   console.log('\n[SERVER] Shutting down gracefully...');
-  io.close();
+  wss.close();
   server.close();
   process.exit(0);
 });
@@ -242,6 +292,6 @@ process.on('SIGINT', () => {
 // Start server
 const PORT = process.env.PORT || 3001;
 server.listen(PORT, () => {
-  console.log(`[SERVER] Running on port ${PORT}`);
-  console.log(`[SERVER] Environment: ${process.env.NODE_ENV || 'development'}`);
+  console.log(`WebSocket Server running on port ${PORT}`);
+  console.log(`Environment: ${process.env.NODE_ENV || 'development'}`);
 });
