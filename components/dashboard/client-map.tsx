@@ -6,18 +6,6 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { MapPin, Wifi, User, Clock, X } from 'lucide-react'
 import { RemoteControlDrawer } from './remote-control-drawer'
 import { useIsMobile } from '@/hooks/use-media-query'
-import L from 'leaflet'
-
-// Fix Leaflet default marker icon issue
-const DefaultIcon = L.icon({
-  iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-  iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-  shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-  iconSize: [25, 41],
-  iconAnchor: [12, 41],
-  popupAnchor: [1, -34],
-  shadowSize: [41, 41],
-})
 
 // Dynamic import for Leaflet (SSR-incompatible)
 const MapContainer = dynamic(
@@ -64,11 +52,26 @@ export function ClientMap() {
   const [selectedClient, setSelectedClient] = useState<ClientLocation | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [isClient, setIsClient] = useState(false)
+  const [defaultIcon, setDefaultIcon] = useState<any>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile()
 
   useEffect(() => {
     setIsClient(true)
+    // Initialize Leaflet icon after client-side mount
+    if (typeof window !== 'undefined') {
+      const L = require('leaflet')
+      const icon = L.icon({
+        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+        iconSize: [25, 41],
+        iconAnchor: [12, 41],
+        popupAnchor: [1, -34],
+        shadowSize: [41, 41],
+      })
+      setDefaultIcon(icon)
+    }
   }, [])
 
   const handleMarkerClick = (client: ClientLocation) => {
@@ -127,7 +130,7 @@ export function ClientMap() {
               <Marker
                 key={client.id}
                 position={[client.lat, client.lng]}
-                icon={DefaultIcon}
+                icon={defaultIcon}
                 eventHandlers={{
                   click: () => handleMarkerClick(client),
                 }}

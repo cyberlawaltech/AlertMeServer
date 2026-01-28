@@ -30,11 +30,16 @@ export function Header({ sidebarWidth, isMobile, isTablet }: HeaderProps) {
   const [activeNodes, setActiveNodes] = useState(2847)
   const [systemHealth, setSystemHealth] = useState(98.7)
   const [alerts, setAlerts] = useState(3)
-  const [time, setTime] = useState(new Date())
+  const [time, setTime] = useState<Date | null>(null)
+  const [hydrated, setHydrated] = useState(false)
   const [searchOpen, setSearchOpen] = useState(false)
 
   // Simulate real-time data updates
   useEffect(() => {
+    // Mark as hydrated and initialize time on client side only
+    setHydrated(true)
+    setTime(new Date())
+    
     const interval = setInterval(() => {
       setActiveNodes(prev => prev + Math.floor(Math.random() * 10) - 5)
       setSystemHealth(prev => Math.min(100, Math.max(90, prev + (Math.random() - 0.5) * 0.5)))
@@ -169,12 +174,14 @@ export function Header({ sidebarWidth, isMobile, isTablet }: HeaderProps) {
         )}
 
         {/* Time - Hidden on small mobile */}
-        <div className="text-right px-2 sm:px-3 md:px-4 border-l border-border hidden sm:block">
-          <span className="text-[10px] md:text-xs text-muted-foreground block">UTC</span>
-          <span className="font-mono text-xs md:text-sm text-foreground">
-            {time.toUTCString().slice(17, 25)}
-          </span>
-        </div>
+        {hydrated && (
+          <div className="text-right px-2 sm:px-3 md:px-4 border-l border-border hidden sm:block">
+            <span className="text-[10px] md:text-xs text-muted-foreground block">UTC</span>
+            <span className="font-mono text-xs md:text-sm text-foreground">
+              {time ? time.toUTCString().slice(17, 25) : '--:--:--'}
+            </span>
+          </div>
+        )}
 
         {/* Notifications */}
         <DropdownMenu>
