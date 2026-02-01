@@ -2,6 +2,8 @@ import React from "react"
 import type { Metadata, Viewport } from 'next'
 import { Geist, Geist_Mono } from 'next/font/google'
 import { Analytics } from '@vercel/analytics/next'
+import { DataProvider } from '@/components/data-provider'
+import { ThemeProvider } from '@/components/theme-provider'
 import 'leaflet/dist/leaflet.css'
 import './globals.css'
 
@@ -43,9 +45,13 @@ export default function RootLayout({
   children: React.ReactNode
 }>) {
   return (
-    <html lang="en">
+    <html lang="en" className="dark" suppressHydrationWarning>
       <body className="font-sans antialiased">
-        {children}
+        <ThemeProvider attribute="class" defaultTheme="dark" enableSystem>
+          <DataProvider>
+            {children}
+          </DataProvider>
+        </ThemeProvider>
         <Analytics />
       </body>
     </html>

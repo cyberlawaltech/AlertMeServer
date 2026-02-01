@@ -6,6 +6,7 @@ import { motion, AnimatePresence } from 'framer-motion'
 import { MapPin, Wifi, User, Clock, X } from 'lucide-react'
 import { RemoteControlDrawer } from './remote-control-drawer'
 import { useIsMobile } from '@/hooks/use-media-query'
+import { useData, Client } from '@/components/data-provider'
 
 // Dynamic import for Leaflet (SSR-incompatible)
 const MapContainer = dynamic(
@@ -25,36 +26,14 @@ const Popup = dynamic(
   { ssr: false }
 )
 
-interface ClientLocation {
-  id: string
-  name: string
-  deviceId: string
-  lat: number
-  lng: number
-  balance: number
-  status: 'active' | 'idle' | 'offline'
-  lastSync: string
-  location: string
-}
-
-const mockClients: ClientLocation[] = [
-  { id: '1', name: 'Adebayo Oluwaseun', deviceId: 'ECO-7842', lat: 6.5244, lng: 3.3792, balance: 245000, status: 'active', lastSync: '2 min ago', location: 'Lagos, Nigeria' },
-  { id: '2', name: 'Chioma Nnamdi', deviceId: 'ECO-3156', lat: 9.0579, lng: 7.4951, balance: 89500, status: 'active', lastSync: '5 min ago', location: 'Abuja, Nigeria' },
-  { id: '3', name: 'Emmanuel Okonkwo', deviceId: 'ECO-9421', lat: 5.9631, lng: -0.1869, balance: 156000, status: 'idle', lastSync: '15 min ago', location: 'Accra, Ghana' },
-  { id: '4', name: 'Fatima Diallo', deviceId: 'ECO-2847', lat: 14.6928, lng: -17.4467, balance: 312000, status: 'active', lastSync: '1 min ago', location: 'Dakar, Senegal' },
-  { id: '5', name: 'Kwame Asante', deviceId: 'ECO-6539', lat: 6.1286, lng: 1.2254, balance: 78200, status: 'offline', lastSync: '2 hours ago', location: 'Lomé, Togo' },
-  { id: '6', name: 'Amina Bello', deviceId: 'ECO-4721', lat: 12.0022, lng: 8.5919, balance: 423000, status: 'active', lastSync: '30 sec ago', location: 'Kano, Nigeria' },
-  { id: '7', name: 'Kofi Mensah', deviceId: 'ECO-8934', lat: 5.5560, lng: -0.1969, balance: 67800, status: 'active', lastSync: '3 min ago', location: 'Tema, Ghana' },
-  { id: '8', name: 'Blessing Eze', deviceId: 'ECO-1256', lat: 4.7500, lng: 7.0000, balance: 198500, status: 'idle', lastSync: '20 min ago', location: 'Port Harcourt, Nigeria' },
-]
-
 export function ClientMap() {
-  const [selectedClient, setSelectedClient] = useState<ClientLocation | null>(null)
+  const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [isClient, setIsClient] = useState(false)
   const [defaultIcon, setDefaultIcon] = useState<any>(null)
   const mapRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile()
+  const { clients } = useData()
 
   useEffect(() => {
     setIsClient(true)
@@ -74,18 +53,22 @@ export function ClientMap() {
     }
   }, [])
 
-  const handleMarkerClick = (client: ClientLocation) => {
+  const handleMarkerClick = (client: Client) => {
     setSelectedClient(client)
     setDrawerOpen(true)
   }
 
-  const getStatusColor = (status: ClientLocation['status']) => {
+  const getStatusColor = (status: Client['status']) => {
     switch (status) {
       case 'active': return '#30D158'
       case 'idle': return '#FFD60A'
       case 'offline': return '#FF3B30'
     }
   }
+
+  const activeCount = clients.filter(c => c.status === 'active').length
+  const idleCount = clients.filter(c => c.status === 'idle').length
+  const offlineCount = clients.filter(c => c.status === 'offline').length
 
   return (
     <div className="relative w-full h-full bg-card rounded-xl border border-border overflow-hidden">
@@ -99,15 +82,15 @@ export function ClientMap() {
           <div className="flex items-center gap-2 sm:gap-4 text-[10px] sm:text-sm flex-shrink-0">
             <div className="flex items-center gap-1 sm:gap-2">
               <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-success-green animate-pulse" />
-              <span className="text-muted-foreground">{mockClients.filter(c => c.status === 'active').length}</span>
+              <span className="text-muted-foreground">{activeCount}</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 hidden sm:flex">
               <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-yellow-500" />
-              <span className="text-muted-foreground">{mockClients.filter(c => c.status === 'idle').length}</span>
+              <span className="text-muted-foreground">{idleCount}</span>
             </div>
             <div className="flex items-center gap-1 sm:gap-2 hidden sm:flex">
               <span className="w-1.5 h-1.5 sm:w-2 sm:h-2 rounded-full bg-alert-red" />
-              <span className="text-muted-foreground">{mockClients.filter(c => c.status === 'offline').length}</span>
+              <span className="text-muted-foreground">{offlineCount}</span>
             </div>
           </div>
         </div>
@@ -115,7 +98,7 @@ export function ClientMap() {
 
       {/* Map Container */}
       <div ref={mapRef} className="w-full h-full">
-        {isClient && (
+        {isClient && clients.length > 0 && (
           <MapContainer
             center={[7.5, 3.5]}
             zoom={isMobile ? 4 : 5}
@@ -126,7 +109,7 @@ export function ClientMap() {
               attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a>'
               url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
             />
-            {mockClients.map((client) => (
+            {clients.map((client) => (
               <Marker
                 key={client.id}
                 position={[client.lat, client.lng]}
@@ -147,7 +130,7 @@ export function ClientMap() {
                     <div className="space-y-1 text-[10px] sm:text-sm text-muted-foreground">
                       <p>Device: {client.deviceId}</p>
                       <p>Balance: ₦{client.balance.toLocaleString()}</p>
-                      <p>Last Sync: {client.lastSync}</p>
+                      <p>Last Sync: {new Date(client.lastSync).toLocaleTimeString()}</p>
                     </div>
                     <button
                       type="button"

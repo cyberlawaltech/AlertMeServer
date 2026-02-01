@@ -12,6 +12,7 @@ import {
   TrendingUp,
   TrendingDown,
 } from 'lucide-react'
+import { useData } from '@/components/data-provider'
 
 interface StatCard {
   id: string
@@ -25,84 +26,76 @@ interface StatCard {
   color: string
 }
 
-const initialStats: StatCard[] = [
-  {
-    id: 'active-users',
-    title: 'Active Users',
-    shortTitle: 'Users',
-    value: 45678,
-    format: 'number',
-    icon: Users,
-    trend: 'up',
-    trendValue: '+12.5%',
-    color: 'teal',
-  },
-  {
-    id: 'total-transactions',
-    title: 'Total Transactions',
-    shortTitle: 'Transactions',
-    value: 2847562,
-    format: 'currency',
-    icon: CreditCard,
-    trend: 'up',
-    trendValue: '+8.3%',
-    color: 'teal',
-  },
-  {
-    id: 'pending-loans',
-    title: 'Pending Loans',
-    shortTitle: 'Loans',
-    value: 127,
-    format: 'number',
-    icon: Landmark,
-    trend: 'down',
-    trendValue: '-3.2%',
-    color: 'teal',
-  },
-  {
-    id: 'security-score',
-    title: 'Security Score',
-    shortTitle: 'Security',
-    value: 98.7,
-    format: 'percentage',
-    icon: ShieldCheck,
-    trend: 'up',
-    trendValue: '+0.5%',
-    color: 'teal',
-  },
-]
-
 export function StatsCards() {
-  const [stats, setStats] = useState(initialStats)
+  const { stats, clients } = useData()
+  const [displayStats, setDisplayStats] = useState<StatCard[]>([])
 
-  // Simulate real-time updates
   useEffect(() => {
-    const interval = setInterval(() => {
-      setStats(prev => prev.map(stat => ({
-        ...stat,
-        value: stat.format === 'percentage'
-          ? Math.min(100, Math.max(95, stat.value + (Math.random() - 0.5) * 0.2))
-          : stat.value + Math.floor((Math.random() - 0.3) * (stat.format === 'currency' ? 10000 : 10)),
-      })))
-    }, 3000)
-
-    return () => clearInterval(interval)
-  }, [])
+    if (stats && clients) {
+      const newStats: StatCard[] = [
+        {
+          id: 'active-users',
+          title: 'Active Users',
+          shortTitle: 'Users',
+          value: stats.activeClients,
+          format: 'number',
+          icon: Users,
+          trend: 'up',
+          trendValue: `+${Math.round((stats.activeClients / stats.totalClients) * 100)}%`,
+          color: 'teal',
+        },
+        {
+          id: 'total-transactions',
+          title: 'Total Balance',
+          shortTitle: 'Balance',
+          value: stats.totalBalance,
+          format: 'currency',
+          icon: CreditCard,
+          trend: 'up',
+          trendValue: '+8.3%',
+          color: 'teal',
+        },
+        {
+          id: 'pending-loans',
+          title: 'Total Clients',
+          shortTitle: 'Clients',
+          value: stats.totalClients,
+          format: 'number',
+          icon: Landmark,
+          trend: stats.totalClients > 0 ? 'up' : 'down',
+          trendValue: `${stats.totalClients} registered`,
+          color: 'teal',
+        },
+        {
+          id: 'security-score',
+          title: 'Security Score',
+          shortTitle: 'Security',
+          value: 98.7,
+          format: 'percentage',
+          icon: ShieldCheck,
+          trend: 'up',
+          trendValue: '+0.5%',
+          color: 'teal',
+        },
+      ]
+      setDisplayStats(newStats)
+    }
+  }, [stats, clients])
 
   const formatValue = (stat: StatCard) => {
     switch (stat.format) {
       case 'currency':
-        return `₦${stat.value.toLocaleString()}`
+        return `₦${Math.floor(stat.value).toLocaleString()}`
       case 'percentage':
         return `${stat.value.toFixed(1)}%`
       default:
-        return stat.value.toLocaleString()
+        return Math.floor(stat.value).toLocaleString()
     }
   }
 
   return (
     <div className="grid grid-cols-2 lg:grid-cols-4 gap-3 md:gap-4">
-      {stats.map((stat, index) => (
+      {displayStats.map((stat, index) => (
         <motion.div
           key={stat.id}
           initial={{ opacity: 0, y: 20 }}

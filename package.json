@@ -6,7 +6,9 @@
     "build": "next build",
     "dev": "next dev",
     "lint": "eslint .",
-    "start": "next start"
+      "start": "next start",
+      "server": "node server.js",
+      "server:dev": "node server.js"
   },
   "dependencies": {
     "@emotion/is-prop-valid": "latest",
@@ -58,6 +60,7 @@
     "react-leaflet": "5.0.0",
     "react-resizable-panels": "^2.1.7",
     "recharts": "2.15.4",
+    "socket.io-client": "^4.8.3",
     "sonner": "^1.7.4",
     "tailwind-merge": "^3.3.1",
     "tailwindcss-animate": "^1.0.7",
@@ -69,7 +72,10 @@
     "@types/node": "^22",
     "@types/react": "^19",
     "@types/react-dom": "^19",
+    "cors": "^2.8.6",
+    "express": "^5.2.1",
     "postcss": "^8.5",
+    "socket.io": "^4.8.3",
     "tailwindcss": "^4.1.9",
     "tw-animate-css": "1.3.3",
     "typescript": "^5"
