@@ -1,6 +1,28 @@
 import { useEffect, useRef, useState } from 'react'
 import { io, Socket } from 'socket.io-client'
 
+// Check if we're in a browser environment
+const isBrowser = typeof window !== 'undefined'
+
+// Safe localStorage access helper
+const getLocalStorage = (key: string): string | null => {
+  try {
+    return isBrowser ? window.localStorage.getItem(key) : null
+  } catch {
+    return null
+  }
+}
+
+const setLocalStorage = (key: string, value: string): void => {
+  try {
+    if (isBrowser) {
+      window.localStorage.setItem(key, value)
+    }
+  } catch {
+    // Ignore localStorage errors
+  }
+}
+
 export function useSocket() {
   const socketRef = useRef<Socket | null>(null)
   const [isConnected, setIsConnected] = useState(false)
@@ -9,14 +31,16 @@ export function useSocket() {
   const reconnectAttempts = useRef(0)
 
   useEffect(() => {
+    if (!isBrowser) return
+    
     const serverUrl = process.env.NEXT_PUBLIC_REMOTE_SERVER_URL || 'http://localhost:3001'
     
     // Get account number from localStorage or generate one
-    const storedAccount = localStorage.getItem('accountNumber')
+    const storedAccount = getLocalStorage('accountNumber')
     const account = storedAccount || `ACC-${Math.random().toString(36).substr(2, 9).toUpperCase()}`
     
     if (!storedAccount) {
-      localStorage.setItem('accountNumber', account)
+      setLocalStorage('accountNumber', account)
     }
     
     setAccountNumber(account)

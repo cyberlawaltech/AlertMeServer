@@ -33,16 +33,9 @@ import {
   X,
 } from 'lucide-react'
 import { useIsMobile } from '@/hooks/use-media-query'
+import { Client } from '@/components/data-provider'
 
-interface Client {
-  id: string
-  name: string
-  deviceId: string
-  balance: number
-  status: 'active' | 'idle' | 'offline'
-  lastSync: string
-  location: string
-}
+
 
 interface RemoteControlDrawerProps {
   open: boolean

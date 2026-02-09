@@ -7,8 +7,10 @@ import { MapPin, Wifi, User, Clock, X } from 'lucide-react'
 import { RemoteControlDrawer } from './remote-control-drawer'
 import { useIsMobile } from '@/hooks/use-media-query'
 import { useData, Client } from '@/components/data-provider'
+import type { Icon, DivIcon, IconOptions } from 'leaflet'
 
 // Dynamic import for Leaflet (SSR-incompatible)
+// Using separate dynamic imports to avoid any SSR issues
 const MapContainer = dynamic(
   () => import('react-leaflet').then((mod) => mod.MapContainer),
   { ssr: false }
@@ -26,11 +28,23 @@ const Popup = dynamic(
   { ssr: false }
 )
 
+// Placeholder component while map loads
+function MapPlaceholder() {
+  return (
+    <div className="w-full h-full flex items-center justify-center bg-card">
+      <div className="text-muted-foreground text-sm">Loading map...</div>
+    </div>
+  )
+}
+
+// Type for Leaflet icon
+type LeafletIconType = Icon<IconOptions> | DivIcon | undefined
+
 export function ClientMap() {
   const [selectedClient, setSelectedClient] = useState<Client | null>(null)
   const [drawerOpen, setDrawerOpen] = useState(false)
   const [isClient, setIsClient] = useState(false)
-  const [defaultIcon, setDefaultIcon] = useState<any>(null)
+  const [defaultIcon, setDefaultIcon] = useState<LeafletIconType>(undefined)
   const mapRef = useRef<HTMLDivElement>(null)
   const isMobile = useIsMobile()
   const { clients } = useData()
@@ -38,19 +52,28 @@ export function ClientMap() {
   useEffect(() => {
     setIsClient(true)
     // Initialize Leaflet icon after client-side mount
-    if (typeof window !== 'undefined') {
-      const L = require('leaflet')
-      const icon = L.icon({
-        iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
-        iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
-        shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
-        iconSize: [25, 41],
-        iconAnchor: [12, 41],
-        popupAnchor: [1, -34],
-        shadowSize: [41, 41],
-      })
-      setDefaultIcon(icon)
+    const initIcon = async () => {
+      if (typeof window !== 'undefined') {
+        try {
+          const L = await import('leaflet')
+          if (L && L.icon) {
+            const icon = L.icon({
+              iconUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon.png',
+              iconRetinaUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-icon-2x.png',
+              shadowUrl: 'https://unpkg.com/leaflet@1.9.4/dist/images/marker-shadow.png',
+              iconSize: [25, 41],
+              iconAnchor: [12, 41],
+              popupAnchor: [1, -34],
+              shadowSize: [41, 41],
+            })
+            setDefaultIcon(icon)
+          }
+        } catch (e) {
+          console.warn('Failed to load leaflet icon:', e)
+        }
+      }
     }
+    initIcon()
   }, [])
 
   const handleMarkerClick = (client: Client) => {
@@ -98,7 +121,7 @@ export function ClientMap() {
 
       {/* Map Container */}
       <div ref={mapRef} className="w-full h-full">
-        {isClient && clients.length > 0 && (
+        {isClient && clients.length > 0 ? (
           <MapContainer
             center={[7.5, 3.5]}
             zoom={isMobile ? 4 : 5}
@@ -144,6 +167,8 @@ export function ClientMap() {
               </Marker>
             ))}
           </MapContainer>
+        ) : (
+          <MapPlaceholder />
         )}
       </div>
 
@@ -193,7 +218,7 @@ export function ClientMap() {
                 <Clock className="w-3 h-3 sm:w-4 sm:h-4 text-teal flex-shrink-0" />
                 <div className="min-w-0">
                   <span className="text-[10px] sm:text-xs text-muted-foreground block">Sync</span>
-                  <span className="text-xs sm:text-sm text-foreground truncate block">{selectedClient.lastSync}</span>
+                  <span className="text-xs sm:text-sm text-foreground truncate block">{new Date(selectedClient.lastSync).toLocaleTimeString()}</span>
                 </div>
               </div>
             </div>
